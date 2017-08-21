@@ -85,7 +85,7 @@ fn test_read_rcon_resp() {
     }
 
     {
-        let mut data: &[u8] = include_bytes!("..\\tests\\ShowNextMap.bin");
+        let mut data: &[u8] = include_bytes!("../tests/ShowNextMap.bin");
         let rcon_resp = read_rcon_resp(&mut data).unwrap();
 
         assert_eq!(
@@ -150,13 +150,13 @@ fn connect<A: ToSocketAddrs>(addr: A, pw: &str) -> Result<TcpStream> {
 fn test_gen_exec_cmd() {
     {
         let result = rcon_gen(36, "ShowNextMap", SERVERDATA_EXECCOMMAND).unwrap();
-        let expect: &[u8] = include_bytes!("..\\tests\\cmd-ShowNextMap.bin");
+        let expect: &[u8] = include_bytes!("../tests/cmd-ShowNextMap.bin");
         assert_eq!(result, expect);
     }
 
     {
         let result = rcon_gen(42, "pass123", SERVERDATA_AUTH).unwrap();
-        let expect: &[u8] = include_bytes!("..\\tests\\auth-request.bin");
+        let expect: &[u8] = include_bytes!("../tests/auth-request.bin");
         assert_eq!(result, expect);
     }
 }
