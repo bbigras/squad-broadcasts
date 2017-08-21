@@ -12,6 +12,8 @@ Set up a Rust environment with [rustup](https://www.rustup.rs) and run:
 cargo build --release
 ```
 
+The binary will be in the `target\release` folder.
+
 **NOTE:** without `--release` the code will be really slow.
 
 ## Run
