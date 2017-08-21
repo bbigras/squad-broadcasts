@@ -62,12 +62,12 @@ use errors::*;
 
 static LOG_FILE: &'static str = "Squad.log";
 
-#[derive(Debug, Deserialize)]
+#[derive(Clone, Debug, Deserialize)]
 struct Config {
     server: ServerConfig,
 }
 
-#[derive(Debug, Deserialize)]
+#[derive(Clone, Debug, Deserialize)]
 struct ServerConfig {
     ip: String,
     port: u64,
@@ -189,13 +189,22 @@ fn follow_log<R: Read>(
 
                                 if let Some(ref map) = log_state.current_map {
                                     if let Some(msg) = maps::get_broadcast(map)? {
+                                        let cfg_clone = cfg.clone();
                                         thread::spawn(move || {
                                             info!("start loop");
                                             for sleep_time in vec![10, 10, 30, 30] {
                                                 thread::sleep(
                                                     time::Duration::from_secs(sleep_time),
                                                 );
-                                                info!("would broadcast: {}\n", msg);
+
+                                                match rcon::exec(
+                                                    (cfg_clone.server.ip.as_str(), cfg_clone.server.port as u16),
+                                                    &cfg_clone.server.pw,
+                                                    &format!("AdminBroadcast {}", msg),
+                                                ) {
+                                                    Ok(resp) => info!("rcon response: {}", resp),
+                                                    Err(e) => error!("error while broadcasting: {}", e),
+                                                }
                                             }
                                             info!("loop ended");
                                         });
@@ -210,7 +219,17 @@ fn follow_log<R: Read>(
 
                                 if let Some(ref map) = log_state.current_map {
                                     if let Some(msg) = maps::get_broadcast(map)? {
-                                        info!("would broadcast: {}\n", msg);
+                                        // send the broadcast twice
+                                        for _ in 0..2 {
+                                            match rcon::exec(
+                                                (cfg.server.ip.as_str(), cfg.server.port as u16),
+                                                &cfg.server.pw,
+                                                &format!("AdminBroadcast {}", msg),
+                                            ) {
+                                                Ok(resp) => info!("rcon response: {}", resp),
+                                                Err(e) => error!("error while broadcasting: {}", e),
+                                            }
+                                        }
                                     }
                                 } else {
                                     error!("current map is not set");
