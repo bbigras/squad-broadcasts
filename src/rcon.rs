@@ -14,6 +14,7 @@ const TIMEOUT_SECS: u64 = 5;
 const SERVERDATA_AUTH_RESPONSE: i32 = 2;
 const SERVERDATA_EXECCOMMAND: i32 = 2;
 const SERVERDATA_AUTH: i32 = 3;
+const SERVERDATA_RESPONSE_VALUE: i32 = 0;
 
 #[derive(Debug, PartialEq)]
 struct RconResponse {
@@ -27,6 +28,24 @@ named!(parse_rcon_response<&[u8], RconResponse>, do_parse!(
         the_type: le_i32 >>
         body: map_res!(take_until_and_consume!("\0"), str::from_utf8) >>
         (RconResponse {
+            id: id,
+            the_type: the_type,
+            body: body.into(),
+        })
+));
+
+#[derive(Debug, PartialEq)]
+struct RconResponseBin {
+    id: i32,
+    the_type: i32,
+    body: Vec<u8>, // TODO: use &[u8] maybe
+}
+
+named!(parse_rcon_response_bin<&[u8], RconResponseBin>, do_parse!(
+        id: le_i32 >>
+        the_type: le_i32 >>
+        body: take_until_and_consume!("\0") >>
+        (RconResponseBin {
             id: id,
             the_type: the_type,
             body: body.into(),
@@ -48,6 +67,37 @@ fn read_rcon_resp(stream: &mut Read) -> Result<RconResponse> {
         .map_err(|e| StringError(format!("{:?}", e)))
         .chain_err(|| "can't parse_rcon_response")?;
     Ok(parsed)
+}
+
+fn read_rcon_resp_multi(stream: &mut Read, stop_id: i32) -> Result<(RconResponseBin, bool)> {
+    let mut buf1 = [0; 4];
+    stream.read_exact(&mut buf1)?;
+
+    let mut rdr = Cursor::new(buf1);
+    let size = rdr.read_i32::<LittleEndian>()?;
+
+    let mut buf2 = vec![0; size as usize];
+    stream.read_exact(&mut buf2)?;
+
+    let parsed = parse_rcon_response_bin(&buf2)
+        .to_full_result()
+        .map_err(|e| StringError(format!("{:?}", e)))
+        .chain_err(|| "can't parse_rcon_response")?;
+    
+    if parsed.id == stop_id {
+        let mut buf3 = [0; 21];
+        stream.read_exact(&mut buf3)?;
+
+        let mut expect = vec![0x0a, 0x00, 0x00, 0x00];
+        expect.write_i32::<LittleEndian>(stop_id)?;
+        expect.append(&mut vec![0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x01, 0x00, 0x00, 0x00, 0x00, 0x00]);
+        
+        if buf3 == expect.as_slice() {
+            return Ok((parsed, true));
+        }
+    }
+
+    Ok((parsed, false))
 }
 
 #[test]
@@ -169,4 +219,89 @@ pub fn exec<A: ToSocketAddrs>(addr: A, pw: &str, command: &str) -> Result<String
     conn.take_error()?;
 
     Ok(read_rcon_resp(&mut conn)?.body)
+}
+
+pub fn exec_big<A: ToSocketAddrs>(addr: A, pw: &str, command: &str) -> Result<String> {
+    let mut conn = connect(addr, pw)?;
+
+    let cmd_bin = rcon_gen(1, command, SERVERDATA_EXECCOMMAND)?;
+    conn.write_all(&cmd_bin)?;
+    conn.take_error()?;
+
+    let empty_id = 2;
+
+    let cmd_bin = rcon_gen(empty_id, "", SERVERDATA_RESPONSE_VALUE)?;
+    conn.write_all(&cmd_bin)?;
+    conn.take_error()?;
+
+    let mut buf = Vec::new();
+
+    loop {
+        let (mut buf2, done) = read_rcon_resp_multi(&mut conn, empty_id).unwrap();
+        buf.append(&mut buf2.body);
+
+        if done {
+            break;
+        }
+    }
+
+    Ok(String::from_utf8_lossy(&buf).to_string())
+}
+
+#[test]
+fn test_multi1() {
+    let buf1 = vec![0x0C, 0x00, 0x00, 0x00, 0x01, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 97, 98, 0x00, 0x00];
+    let buf2 = vec![0x0C, 0x00, 0x00, 0x00, 0x01, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 99, 100, 0x00, 0x00];
+    let buf3 = vec![0x0a, 0x00, 0x00, 0x00, 0x02, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00];
+    let buf4 = vec![0x0a, 0x00, 0x00, 0x00, 0x02, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x01, 0x00, 0x00, 0x00, 0x00, 0x00];
+
+    let mut c = Cursor::new(buf1)
+        .chain(Cursor::new(buf2))
+        .chain(Cursor::new(buf3))
+        .chain(Cursor::new(buf4));
+
+    let mut buf = Vec::new();
+
+    loop {
+        let (mut buf2, done) = read_rcon_resp_multi(&mut c, 2).unwrap();
+        buf.append(&mut buf2.body);
+
+        if done {
+            break;
+        }
+    }
+
+    let decoded = String::from_utf8_lossy(&buf);
+
+    assert_eq!(decoded, "abcd");
+}
+
+#[test]
+fn test_multi2() {
+    // test utf8 character splitted right in the middle (one byte on each packet, it should fail if we decode utf8 before merging both buffers)
+
+    let buf1 = vec![0x0C, 0x00, 0x00, 0x00, 0x01, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 97, 195, 0x00, 0x00];
+    let buf2 = vec![0x0C, 0x00, 0x00, 0x00, 0x01, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 169, 100, 0x00, 0x00];
+    let buf3 = vec![0x0a, 0x00, 0x00, 0x00, 0x02, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00];
+    let buf4 = vec![0x0a, 0x00, 0x00, 0x00, 0x02, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x01, 0x00, 0x00, 0x00, 0x00, 0x00];
+
+    let mut c = Cursor::new(buf1)
+        .chain(Cursor::new(buf2))
+        .chain(Cursor::new(buf3))
+        .chain(Cursor::new(buf4));
+
+    let mut buf = Vec::new();
+
+    loop {
+        let (mut buf2, done) = read_rcon_resp_multi(&mut c, 2).unwrap();
+        buf.append(&mut buf2.body);
+
+        if done {
+            break;
+        }
+    }
+
+    let decoded = String::from_utf8_lossy(&buf);
+
+    assert_eq!(decoded, "aéd");
 }
