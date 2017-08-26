@@ -19,3 +19,11 @@ after_success: |
     cargo install cargo-tarpaulin
     cargo tarpaulin --ciserver travis-ci --coveralls $TRAVIS_JOB_ID
   fi
+
+notifications:
+  webhooks:
+    urls:
+      - "https://scalar.vector.im/api/neb/services/hooks/dHJhdmlzLWNpLyU0MGJiaWdyYXMlM0FtYXRyaXgub3JnLyUyMVVmTUZza21VYmZucmV0bnVkbCUzQW1hdHJpeC5vcmc"
+    on_success: change  # always|never|change
+    on_failure: always
+    on_start: never
