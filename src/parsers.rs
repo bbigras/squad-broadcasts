@@ -1,4 +1,5 @@
 use nom::{digit, not_line_ending};
+use std::str;
 
 #[derive(Debug, PartialEq)]
 pub struct Map<'a> {
@@ -6,18 +7,18 @@ pub struct Map<'a> {
     pub map: &'a str,
 }
 
-named!(pub parse_bringing_world<&str, Map>, ws!(do_parse!(
+named!(pub parse_bringing_world<&[u8], Map>, ws!(do_parse!(
         tag!("[") >>
-        timestamp: take!(19) >>
+        timestamp: map_res!(take!(19), str::from_utf8) >>
         tag!(":") >>
         digit >>
         tag!("][") >>
         digit >>
         take_until_and_consume!("Bringing World ") >>
-        map: take_until!(" up for play") >>
+        map:  map_res!(take_until!(" up for play"), str::from_utf8) >>
         (Map {
-            timestamp: timestamp.into(),
-            map: map,
+            timestamp: timestamp,
+            map:map,
         })
 )));
 
@@ -25,7 +26,7 @@ named!(pub parse_bringing_world<&str, Map>, ws!(do_parse!(
 fn test_parse_bringing_world() {
     let data = "[2017.02.16-16.32.34:844][  0]LogWorld: Bringing World /Game/Maps/Sumari/Sumari_aas_v3/Sumari_aas_v3.Sumari_AAS_v3 up for play (max tick rate 60) at 2017.02.16-16.32.34";
 
-    let parsed = parse_bringing_world(&data).to_result().unwrap();
+    let parsed = parse_bringing_world(data.as_bytes()).to_result().unwrap();
 
     assert_eq!(parsed.timestamp, "2017.02.16-16.32.34");
     assert_eq!(
@@ -41,16 +42,16 @@ pub struct StateChange<'a> {
     pub to: &'a str,
 }
 
-named!(pub parse_state_change<&str, StateChange>, ws!(do_parse!(
+named!(pub parse_state_change<&[u8], StateChange>, ws!(do_parse!(
         tag!("[") >>
-        timestamp: take!(19) >>
+        timestamp: map_res!(take!(19), str::from_utf8) >>
         tag!(":") >>
         digit >>
         tag!("][") >>
         digit >>
         take_until_and_consume!("Match State Changed from ") >>
-        from: take_until_and_consume!(" to ") >>
-        to: not_line_ending >>
+        from: map_res!(take_until_and_consume!(" to "), str::from_utf8) >>
+        to: map_res!(not_line_ending, str::from_utf8) >>
        
         (StateChange {
             timestamp: timestamp.into(),
@@ -64,7 +65,7 @@ fn test_parse_state_change() {
     {
         let data = "[2017.02.19-07.46.23:777][999]LogGameMode:Display: Match State Changed from EnteringMap to WaitingToStart";
 
-        let parsed = parse_state_change(&data).to_result().unwrap();
+        let parsed = parse_state_change(data.as_bytes()).to_result().unwrap();
 
         assert_eq!(parsed.timestamp, "2017.02.19-07.46.23"); // TODO: could be better
         assert_eq!(parsed.from, "EnteringMap");
@@ -74,7 +75,7 @@ fn test_parse_state_change() {
     {
         let data = "[2017.02.16-16.32.34:961][  0]LogGameState: Match State Changed from EnteringMap to WaitingToStart";
 
-        let parsed = parse_state_change(&data).to_result().unwrap();
+        let parsed = parse_state_change(data.as_bytes()).to_result().unwrap();
 
         assert_eq!(parsed.timestamp, "2017.02.16-16.32.34"); // TODO: could be better
         assert_eq!(parsed.from, "EnteringMap");

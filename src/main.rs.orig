@@ -341,6 +341,9 @@ quick_main!(run);
 
 fn is_map_change(data: &[u8]) -> bool {
     if data.is_empty() {
+<<<<<<< HEAD
+        return false;
+=======
         false
     } else if data.len() >= 68 && data[44..68] == *MATCH_STATE_CHANGED {
         true
@@ -348,7 +351,18 @@ fn is_map_change(data: &[u8]) -> bool {
         true
     } else {
         false
+>>>>>>> 4588b0e... check lengths correctly
     }
+
+    if data.len() < 76 {
+        return false;
+    }
+
+    if data[44..68] == *MATCH_STATE_CHANGED || data[51..75] == *MATCH_STATE_CHANGED {
+        return true;
+    }
+    
+    return false;
 }
 
 #[test]
@@ -375,13 +389,26 @@ fn test_is_map_change() {
 }
 
 fn is_binging_world(data: &[u8]) -> bool {
+<<<<<<< HEAD
+    if data.is_empty() {
+        return false;
+    }
+
+    if data.len() < 72 { // TODO
+        return false;
+    }
+
+    if data[40..54] == *BRINGING_WORLD {
+        return true;
+=======
     if data.is_empty() || data.len() < 54 {
         false
-    } else if data.len() >= 54 && data[40..54] == *BRINGING_WORLD {
-        true
     } else {
-        false
+        data[40..54] == *BRINGING_WORLD
+>>>>>>> 4588b0e... check lengths correctly
     }
+    
+    return false;
 }
 
 #[test]
