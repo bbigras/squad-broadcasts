@@ -32,7 +32,7 @@ pub fn get_broadcast(map_long_name: &str) -> Result<Option<String>> {
 
     let map = maps.iter()
         .find(|m| map_long_name.starts_with(&m.long_name))
-        .ok_or("can't find map".to_string())?;
+        .ok_or_else(|| "can't find map".to_string())?;
 
     let f = File::open(BROADCAST_FILE)?;
     let f = BufReader::new(f);

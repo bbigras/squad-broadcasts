@@ -17,7 +17,6 @@ extern crate chrono;
 extern crate byteorder;
 
 extern crate toml;
-extern crate serde;
 
 #[macro_use]
 extern crate serde_derive;
@@ -145,7 +144,7 @@ fn follow_log<R: Read>(
                 //let l = l.trim();
 
                 if is_binging_world(l) {
-                    let r = parse_bringing_world(&l)
+                    let r = parse_bringing_world(l)
                         .to_full_result()
                         .map_err(|e| StringError(format!("{:?}", e)))
                         .chain_err(|| "can't parse_bringing_world")?;
@@ -158,11 +157,11 @@ fn follow_log<R: Read>(
                         log_state.current_map = Some(r.map.to_string());
                     }
                 } else if is_map_change(l) {
-                    let r = parse_state_change(&l)
+                    let r = parse_state_change(l)
                         .to_full_result()
                         .map_err(|e| StringError(format!("{:?}", e)))
                         .chain_err(|| "can't parse_state_change")?;
-                    let parsed = parse_timestamp(&r.timestamp)
+                    let parsed = parse_timestamp(r.timestamp)
                         .to_full_result()
                         .map_err(|e| StringError(format!("{:?}", e)))
                         .chain_err(|| "can't parse_timestamp")?;
@@ -197,9 +196,9 @@ fn follow_log<R: Read>(
                                         let cfg_clone = cfg.clone();
                                         thread::spawn(move || {
                                             info!("start loop");
-                                            for sleep_time in vec![10, 10, 30, 30] {
+                                            for sleep_time in &[10, 10, 30, 30] {
                                                 thread::sleep(
-                                                    time::Duration::from_secs(sleep_time),
+                                                    time::Duration::from_secs(*sleep_time),
                                                 );
 
                                                 match rcon::exec(
@@ -218,27 +217,25 @@ fn follow_log<R: Read>(
                                     error!("current map is not set");
                                 }
                             }
-                        } else if r.to == "InProgress" {
-                            if !is_preload {
-                                info!("state> {} -> {}", r.from, r.to);
+                        } else if r.to == "InProgress" && !is_preload {
+                            info!("state> {} -> {}", r.from, r.to);
 
-                                if let Some(ref map) = log_state.current_map {
-                                    if let Some(msg) = maps::get_broadcast(map)? {
-                                        // send the broadcast twice
-                                        for _ in 0..2 {
-                                            match rcon::exec(
-                                                (cfg.server.ip.as_str(), cfg.server.port as u16),
-                                                &cfg.server.pw,
-                                                &format!("AdminBroadcast {}", msg),
-                                            ) {
-                                                Ok(resp) => info!("rcon response: {}", resp),
-                                                Err(e) => error!("error while broadcasting: {}", e),
-                                            }
+                            if let Some(ref map) = log_state.current_map {
+                                if let Some(msg) = maps::get_broadcast(map)? {
+                                    // send the broadcast twice
+                                    for _ in 0..2 {
+                                        match rcon::exec(
+                                            (cfg.server.ip.as_str(), cfg.server.port as u16),
+                                            &cfg.server.pw,
+                                            &format!("AdminBroadcast {}", msg),
+                                        ) {
+                                            Ok(resp) => info!("rcon response: {}", resp),
+                                            Err(e) => error!("error while broadcasting: {}", e),
                                         }
                                     }
-                                } else {
-                                    error!("current map is not set");
                                 }
+                            } else {
+                                error!("current map is not set");
                             }
                         }
                     }
@@ -344,10 +341,8 @@ fn is_map_change(data: &[u8]) -> bool {
         false
     } else if data.len() >= 68 && data[44..68] == *MATCH_STATE_CHANGED {
         true
-    } else if data.len() >= 75 && data[51..75] == *MATCH_STATE_CHANGED {
-        true
     } else {
-        false
+        data.len() >= 75 && data[51..75] == *MATCH_STATE_CHANGED
     }
 }
 
@@ -377,10 +372,8 @@ fn test_is_map_change() {
 fn is_binging_world(data: &[u8]) -> bool {
     if data.is_empty() || data.len() < 54 {
         false
-    } else if data.len() >= 54 && data[40..54] == *BRINGING_WORLD {
-        true
     } else {
-        false
+        data.len() >= 54 && data[40..54] == *BRINGING_WORLD
     }
 }
 
