@@ -14,8 +14,6 @@ extern crate stream_line_reader;
 
 extern crate chrono;
 
-extern crate byteorder;
-
 extern crate toml;
 
 #[macro_use]
