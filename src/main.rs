@@ -25,7 +25,8 @@ extern crate clap;
 
 mod parsers;
 mod maps;
-mod rcon;
+
+extern crate rcon;
 
 use parsers::parse_bringing_world;
 use parsers::parse_state_change;
@@ -56,6 +57,10 @@ mod errors {
         foreign_links {
             Io(::std::io::Error);
             ParseInt(::std::num::ParseIntError);
+        }
+
+        links {
+            Rcon(::rcon::errors::Error, ::rcon::errors::ErrorKind);
         }
     }
 }
