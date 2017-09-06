@@ -52,7 +52,7 @@ named!(pub parse_state_change<&[u8], StateChange>, ws!(do_parse!(
         take_until_and_consume!("Match State Changed from ") >>
         from: map_res!(take_until_and_consume!(" to "), str::from_utf8) >>
         to: map_res!(not_line_ending, str::from_utf8) >>
-       
+
         (StateChange {
             timestamp: timestamp.into(),
             from: from.into(),
@@ -105,7 +105,7 @@ named!(pub parse_timestamp<&str, Timestamp>, ws!(do_parse!(
         minute: take!(2) >>
         tag!(".") >>
         second: take!(2) >>
-        
+
         (Timestamp {
             year: year,
             month: month,
@@ -139,7 +139,7 @@ pub struct MapName {
 named!(pub parse_map_names<&str, MapName>, ws!(do_parse!(
         short_name: take_until_and_consume!("=") >>
         long_name: not_line_ending >>
-        
+
         (MapName {
             short_name: short_name.into(),
             long_name: long_name.into(),
@@ -168,7 +168,7 @@ pub struct MapBroadcast<'a> {
 named!(pub parse_map_broadcast<&str, MapBroadcast>, ws!(do_parse!(
         map: take_until_and_consume!("=") >>
         broadcast: not_line_ending >>
-        
+
         (MapBroadcast {
             map: map.into(),
             broadcast: broadcast.into(),

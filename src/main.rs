@@ -6,9 +6,9 @@ extern crate error_chain;
 #[macro_use]
 extern crate nom;
 
+extern crate env_logger;
 #[macro_use]
 extern crate log;
-extern crate env_logger;
 
 extern crate stream_line_reader;
 
@@ -205,12 +205,17 @@ fn follow_log<R: Read>(
                                                 );
 
                                                 match rcon::exec(
-                                                    (cfg_clone.server.ip.as_str(), cfg_clone.server.port as u16),
+                                                    (
+                                                        cfg_clone.server.ip.as_str(),
+                                                        cfg_clone.server.port as u16,
+                                                    ),
                                                     &cfg_clone.server.pw,
                                                     &format!("AdminBroadcast {}", msg),
                                                 ) {
                                                     Ok(resp) => info!("rcon response: {}", resp),
-                                                    Err(e) => error!("error while broadcasting: {}", e),
+                                                    Err(e) => {
+                                                        error!("error while broadcasting: {}", e)
+                                                    }
                                                 }
                                             }
                                             info!("loop ended");
