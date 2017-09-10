@@ -109,6 +109,131 @@ struct LogState {
     last_file_size: Option<u64>,
 }
 
+fn line_bringing_world(l: &[u8], is_preload: &bool, log_state: &mut LogState) -> Result<()> {
+    let r = parse_bringing_world(l)
+        .to_full_result()
+        .map_err(|e| StringError(format!("{:?}", e)))
+        .chain_err(|| "can't parse_bringing_world")?;
+
+    if r.map != "/Game/Maps/TransitionMap.TransitionMap" {
+        if !is_preload {
+            info!("map> {}", r.map);
+        }
+
+        log_state.current_map = Some(r.map.to_string());
+    }
+
+    Ok(())
+}
+
+fn line_map_change(
+    l: &[u8],
+    is_preload: &bool,
+    log_state: &mut LogState,
+    cfg: &Config,
+) -> Result<()> {
+    let r = parse_state_change(l)
+        .to_full_result()
+        .map_err(|e| StringError(format!("{:?}", e)))
+        .chain_err(|| "can't parse_state_change")?;
+    let parsed = parse_timestamp(r.timestamp)
+        .to_full_result()
+        .map_err(|e| StringError(format!("{:?}", e)))
+        .chain_err(|| "can't parse_timestamp")?;
+
+    let datetime = Utc.ymd(
+        parsed.year.parse()?,
+        parsed.month.parse()?,
+        parsed.day.parse()?,
+    ).and_hms(
+            parsed.hour.parse()?,
+            parsed.minute.parse()?,
+            parsed.second.parse()?,
+        );
+
+    let ignore_change = {
+        match log_state.last_state_change {
+            Some(ref t) => {
+                t.state == r.to && datetime.signed_duration_since(t.datetime).num_seconds() < 5
+            }
+            None => false,
+        }
+    };
+
+    if !ignore_change {
+        if r.to == "WaitingToStart" {
+            if !is_preload {
+                info!("state> {} -> {}", r.from, r.to);
+
+                let map = log_state
+                    .current_map
+                    .as_ref()
+                    .ok_or("current map is not set")?;
+
+                if let Some(msg) = maps::get_broadcast(map)? {
+                    let cfg_clone = cfg.clone();
+                    thread::spawn(move || {
+                        info!("start loop");
+                        for sleep_time in &[10, 10, 30, 30] {
+                            thread::sleep(time::Duration::from_secs(*sleep_time));
+
+                            match rcon::exec(
+                                (cfg_clone.server.ip.as_str(), cfg_clone.server.port as u16),
+                                &cfg_clone.server.pw,
+                                &format!("AdminBroadcast {}", msg),
+                            ) {
+                                Ok(resp) => info!("rcon response: {}", resp),
+                                Err(e) => error!("error while broadcasting: {}", e),
+                            }
+                        }
+                        info!("loop ended");
+                    });
+                }
+            }
+        } else if r.to == "InProgress" && !is_preload {
+            info!("state> {} -> {}", r.from, r.to);
+
+            let map = log_state
+                .current_map
+                .as_ref()
+                .ok_or("current map is not set")?;
+
+            if let Some(msg) = maps::get_broadcast(map)? {
+                // send the broadcast twice
+                for _ in 0..2 {
+                    match rcon::exec(
+                        (cfg.server.ip.as_str(), cfg.server.port as u16),
+                        &cfg.server.pw,
+                        &format!("AdminBroadcast {}", msg),
+                    ) {
+                        Ok(resp) => info!("rcon response: {}", resp),
+                        Err(e) => error!("error while broadcasting: {}", e),
+                    }
+                }
+            }
+        }
+    }
+
+    log_state.last_state_change = Some(StateTime {
+        state: r.to.to_string(),
+        datetime: datetime,
+    });
+
+    Ok(())
+}
+
+fn parse_line(l: &[u8], is_preload: &bool, log_state: &mut LogState, cfg: &Config) -> Result<()> {
+    //let l = l.trim();
+
+    if is_binging_world(l) {
+        line_bringing_world(l, is_preload, log_state)?;
+    } else if is_map_change(l) {
+        line_map_change(l, is_preload, log_state, cfg)?;
+    }
+
+    Ok(())
+}
+
 fn follow_log<R: Read>(
     reader: &mut StreamReader<R>,
     log_state: &mut LogState,
@@ -121,140 +246,34 @@ fn follow_log<R: Read>(
     loop {
         match reader.line() {
             Ok(l) => {
-                if l.is_none() {
-                    if is_preload {
-                        info!("preloading done");
-                    }
-                    //TODO: would be better to check for EOF
-
-                    is_preload = false;
-
-                    // Check if the log file rotated
-                    let metadata = metadata(LOG_FILE)?;
-
-                    if let Some(l) = log_state.last_file_size {
-                        if metadata.len() < l {
-                            info!("file is smaller, reopen");
-                            return Ok(());
+                match l {
+                    Some(l2) => if let Err(e) = parse_line(l2, &is_preload, log_state, cfg) {
+                        error!("error parsing line: {}\n{:?}", e, l2);
+                    },
+                    None => {
+                        if is_preload {
+                            info!("preloading done");
                         }
-                    }
-                    log_state.last_file_size = Some(metadata.len());
+                        //TODO: would be better to check for EOF
 
-                    debug!("sleep");
-                    thread::sleep(time::Duration::from_secs(1));
+                        is_preload = false;
 
-                    continue;
-                }
+                        // Check if the log file rotated
+                        let metadata = metadata(LOG_FILE)?;
 
-                let l = l.unwrap();
-                //let l = l.trim();
-
-                if is_binging_world(l) {
-                    let r = parse_bringing_world(l)
-                        .to_full_result()
-                        .map_err(|e| StringError(format!("{:?}", e)))
-                        .chain_err(|| "can't parse_bringing_world")?;
-
-                    if r.map != "/Game/Maps/TransitionMap.TransitionMap" {
-                        if !is_preload {
-                            info!("map> {}", r.map);
-                        }
-
-                        log_state.current_map = Some(r.map.to_string());
-                    }
-                } else if is_map_change(l) {
-                    let r = parse_state_change(l)
-                        .to_full_result()
-                        .map_err(|e| StringError(format!("{:?}", e)))
-                        .chain_err(|| "can't parse_state_change")?;
-                    let parsed = parse_timestamp(r.timestamp)
-                        .to_full_result()
-                        .map_err(|e| StringError(format!("{:?}", e)))
-                        .chain_err(|| "can't parse_timestamp")?;
-
-                    let datetime = Utc.ymd(
-                        parsed.year.parse()?,
-                        parsed.month.parse()?,
-                        parsed.day.parse()?,
-                    ).and_hms(
-                            parsed.hour.parse()?,
-                            parsed.minute.parse()?,
-                            parsed.second.parse()?,
-                        );
-
-                    let ignore_change = {
-                        match log_state.last_state_change {
-                            Some(ref t) => {
-                                t.state == r.to &&
-                                    datetime.signed_duration_since(t.datetime).num_seconds() < 5
-                            }
-                            None => false,
-                        }
-                    };
-
-                    if !ignore_change {
-                        if r.to == "WaitingToStart" {
-                            if !is_preload {
-                                info!("state> {} -> {}", r.from, r.to);
-
-                                if let Some(ref map) = log_state.current_map {
-                                    if let Some(msg) = maps::get_broadcast(map)? {
-                                        let cfg_clone = cfg.clone();
-                                        thread::spawn(move || {
-                                            info!("start loop");
-                                            for sleep_time in &[10, 10, 30, 30] {
-                                                thread::sleep(
-                                                    time::Duration::from_secs(*sleep_time),
-                                                );
-
-                                                match rcon::exec(
-                                                    (
-                                                        cfg_clone.server.ip.as_str(),
-                                                        cfg_clone.server.port as u16,
-                                                    ),
-                                                    &cfg_clone.server.pw,
-                                                    &format!("AdminBroadcast {}", msg),
-                                                ) {
-                                                    Ok(resp) => info!("rcon response: {}", resp),
-                                                    Err(e) => {
-                                                        error!("error while broadcasting: {}", e)
-                                                    }
-                                                }
-                                            }
-                                            info!("loop ended");
-                                        });
-                                    }
-                                } else {
-                                    error!("current map is not set");
-                                }
-                            }
-                        } else if r.to == "InProgress" && !is_preload {
-                            info!("state> {} -> {}", r.from, r.to);
-
-                            if let Some(ref map) = log_state.current_map {
-                                if let Some(msg) = maps::get_broadcast(map)? {
-                                    // send the broadcast twice
-                                    for _ in 0..2 {
-                                        match rcon::exec(
-                                            (cfg.server.ip.as_str(), cfg.server.port as u16),
-                                            &cfg.server.pw,
-                                            &format!("AdminBroadcast {}", msg),
-                                        ) {
-                                            Ok(resp) => info!("rcon response: {}", resp),
-                                            Err(e) => error!("error while broadcasting: {}", e),
-                                        }
-                                    }
-                                }
-                            } else {
-                                error!("current map is not set");
+                        if let Some(l) = log_state.last_file_size {
+                            if metadata.len() < l {
+                                info!("file is smaller, reopen");
+                                return Ok(());
                             }
                         }
-                    }
+                        log_state.last_file_size = Some(metadata.len());
 
-                    log_state.last_state_change = Some(StateTime {
-                        state: r.to.to_string(),
-                        datetime: datetime,
-                    });
+                        debug!("sleep");
+                        thread::sleep(time::Duration::from_secs(1));
+
+                        continue;
+                    }
                 }
             }
             Err(e) => {
