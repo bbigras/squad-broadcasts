@@ -57,6 +57,9 @@ mod errors {
         foreign_links {
             Io(::std::io::Error);
             ParseInt(::std::num::ParseIntError);
+            Toml(::toml::de::Error);
+            Env(::std::env::VarError);
+            Log(::log::SetLoggerError);
         }
 
         links {
@@ -264,7 +267,7 @@ fn follow_log<R: Read>(
     Ok(())
 }
 
-fn init_log() {
+fn init_log() -> Result<()> {
     let format = |record: &LogRecord| {
         format!(
             "{} - {} - {}",
@@ -281,10 +284,11 @@ fn init_log() {
         .filter(Some("reqwest"), LogLevelFilter::Warn);
 
     if env::var("RUST_LOG").is_ok() {
-        builder.parse(&env::var("RUST_LOG").unwrap());
+        builder.parse(&env::var("RUST_LOG")?);
     }
 
-    builder.init().unwrap();
+    builder.init()?;
+    Ok(())
 }
 
 fn open_log(cfg: &Config) -> Result<()> {
@@ -309,12 +313,12 @@ fn load_config(file_name: &str) -> Result<Config> {
     let mut buffer = String::new();
     f.read_to_string(&mut buffer)?;
 
-    let cfg: Config = toml::from_str(&buffer).unwrap();
+    let cfg: Config = toml::from_str(&buffer)?;
     Ok(cfg)
 }
 
 fn run() -> Result<()> {
-    init_log();
+    init_log().expect("can't init log");
 
     let matches = App::new("squad auto broadcasts")
         .arg(Arg::with_name("test").long("test").help("test rcon"))
