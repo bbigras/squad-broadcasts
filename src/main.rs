@@ -46,9 +46,10 @@ use std::env;
 use std::{error, fmt};
 use std::{thread, time};
 
-static BRINGING_WORLD: &'static [u8] = b"Bringing World";
-static MATCH_STATE_CHANGED: &'static [u8] = b"Match State Changed from";
-static CONFIG_FILE: &'static str = "broadcasts.toml";
+const BRINGING_WORLD: &'static [u8] = b"Bringing World";
+const MATCH_STATE_CHANGED: &'static [u8] = b"Match State Changed from";
+const CONFIG_FILE: &'static str = "broadcasts.toml";
+const LOG_FILE: &'static str = "Squad.log";
 
 mod errors {
     // Create the Error, ErrorKind, ResultExt, and Result types
@@ -65,8 +66,6 @@ mod errors {
 }
 
 use errors::*;
-
-static LOG_FILE: &'static str = "Squad.log";
 
 #[derive(Clone, Debug, Deserialize, PartialEq)]
 struct Config {

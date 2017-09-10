@@ -8,8 +8,8 @@ use parsers::parse_map_broadcast;
 use parsers::parse_map_names;
 use parsers::MapName;
 
-static MAPS_FILE: &'static str = "dpg-Maps.cfg";
-static BROADCAST_FILE: &'static str = "dpg-Broadcasts.cfg";
+const MAPS_FILE: &'static str = "dpg-Maps.cfg";
+const BROADCAST_FILE: &'static str = "dpg-Broadcasts.cfg";
 
 fn load_map_names() -> Result<Vec<MapName>> {
     let mut list = Vec::new();
