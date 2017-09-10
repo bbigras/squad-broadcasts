@@ -4,7 +4,6 @@ use std::io::{Cursor, Read, Write};
 use std::time::Duration;
 
 use errors::*;
-use StringError;
 
 use nom::le_i32;
 use byteorder::{LittleEndian, ReadBytesExt, WriteBytesExt};
@@ -64,7 +63,6 @@ fn read_rcon_resp(stream: &mut Read) -> Result<RconResponse> {
 
     let parsed = parse_rcon_response(&buf2)
         .to_full_result()
-        .map_err(|e| StringError(format!("{:?}", e)))
         .chain_err(|| "can't parse_rcon_response")?;
     Ok(parsed)
 }
@@ -81,7 +79,6 @@ fn read_rcon_resp_multi(stream: &mut Read, stop_id: i32) -> Result<(RconResponse
 
     let parsed = parse_rcon_response_bin(&buf2)
         .to_full_result()
-        .map_err(|e| StringError(format!("{:?}", e)))
         .chain_err(|| "can't parse_rcon_response")?;
     
     if parsed.id == stop_id {

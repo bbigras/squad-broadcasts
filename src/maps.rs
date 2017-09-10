@@ -2,7 +2,6 @@ use std::io::{BufRead, BufReader};
 use std::fs::File;
 
 use errors::*;
-use StringError;
 
 use parsers::parse_map_broadcast;
 use parsers::parse_map_names;
@@ -19,7 +18,6 @@ fn load_map_names() -> Result<Vec<MapName>> {
     for line in f.lines() {
         let parsed = parse_map_names(&line?)
             .to_full_result()
-            .map_err(|e| StringError(format!("{:?}", e)))
             .chain_err(|| "can't parse_map_names")?;
         list.push(parsed);
     }
@@ -42,7 +40,6 @@ pub fn get_broadcast(map_long_name: &str) -> Result<Option<String>> {
 
         let parsed = parse_map_broadcast(&l)
             .to_full_result()
-            .map_err(|e| StringError(format!("{:?}", e)))
             .chain_err(|| "can't parse_map_broadcast")?;
         if map.short_name == parsed.map {
             return Ok(Some(parsed.broadcast.to_string()));

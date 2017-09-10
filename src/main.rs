@@ -43,7 +43,6 @@ use clap::{App, Arg};
 use std::io::Read;
 use std::fs::{metadata, File};
 use std::env;
-use std::{error, fmt};
 use std::{thread, time};
 
 const BRINGING_WORLD: &'static [u8] = b"Bringing World";
@@ -60,6 +59,7 @@ mod errors {
             Toml(::toml::de::Error);
             Env(::std::env::VarError);
             Log(::log::SetLoggerError);
+            Nom(::nom::IError);
         }
 
         links {
@@ -82,22 +82,6 @@ struct ServerConfig {
     pw: String,
 }
 
-// TODO: shouldn't need this
-#[derive(Debug)]
-pub struct StringError(String);
-
-impl fmt::Display for StringError {
-    fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
-        fmt.write_str(&self.0)
-    }
-}
-
-impl error::Error for StringError {
-    fn description(&self) -> &str {
-        &self.0
-    }
-}
-
 struct StateTime {
     state: String,
     datetime: DateTime<chrono::Utc>,
@@ -112,7 +96,6 @@ struct LogState {
 fn line_bringing_world(l: &[u8], is_preload: &bool, log_state: &mut LogState) -> Result<()> {
     let r = parse_bringing_world(l)
         .to_full_result()
-        .map_err(|e| StringError(format!("{:?}", e)))
         .chain_err(|| "can't parse_bringing_world")?;
 
     if r.map != "/Game/Maps/TransitionMap.TransitionMap" {
@@ -134,11 +117,9 @@ fn line_map_change(
 ) -> Result<()> {
     let r = parse_state_change(l)
         .to_full_result()
-        .map_err(|e| StringError(format!("{:?}", e)))
         .chain_err(|| "can't parse_state_change")?;
     let parsed = parse_timestamp(r.timestamp)
         .to_full_result()
-        .map_err(|e| StringError(format!("{:?}", e)))
         .chain_err(|| "can't parse_timestamp")?;
 
     let datetime = Utc.ymd(
