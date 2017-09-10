@@ -1,0 +1,4 @@
+[server]
+ip = "ip"
+port = 123456
+pw = "rcon password"

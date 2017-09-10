@@ -48,6 +48,7 @@ use std::{thread, time};
 
 static BRINGING_WORLD: &'static [u8] = b"Bringing World";
 static MATCH_STATE_CHANGED: &'static [u8] = b"Match State Changed from";
+static CONFIG_FILE: &'static str = "broadcasts.toml";
 
 mod errors {
     // Create the Error, ErrorKind, ResultExt, and Result types
@@ -67,12 +68,12 @@ use errors::*;
 
 static LOG_FILE: &'static str = "Squad.log";
 
-#[derive(Clone, Debug, Deserialize)]
+#[derive(Clone, Debug, Deserialize, PartialEq)]
 struct Config {
     server: ServerConfig,
 }
 
-#[derive(Clone, Debug, Deserialize)]
+#[derive(Clone, Debug, Deserialize, PartialEq)]
 struct ServerConfig {
     ip: String,
     port: u64,
@@ -303,8 +304,8 @@ fn open_log(cfg: &Config) -> Result<()> {
     Ok(())
 }
 
-fn load_config() -> Result<Config> {
-    let mut f = File::open("broadcasts.toml")?;
+fn load_config(file_name: &str) -> Result<Config> {
+    let mut f = File::open(file_name)?;
 
     let mut buffer = String::new();
     f.read_to_string(&mut buffer)?;
@@ -320,7 +321,7 @@ fn run() -> Result<()> {
         .arg(Arg::with_name("test").long("test").help("test rcon"))
         .get_matches();
 
-    let cfg = load_config()?;
+    let cfg = load_config(CONFIG_FILE)?;
 
     if matches.is_present("test") {
         info!("test rcon");
@@ -402,4 +403,19 @@ fn test_is_binging_world() {
     assert!(!is_binging_world(data5.as_bytes()));
     assert!(is_binging_world(data6.as_bytes()));
     assert!(!is_binging_world(data7.as_bytes()));
+}
+
+#[test]
+fn test_load_config() {
+    let cfg = load_config("tests/config.toml").unwrap();
+    assert_eq!(
+        cfg,
+        Config {
+            server: ServerConfig {
+                ip: "ip".to_string(),
+                port: 123456,
+                pw: "rcon password".to_string(),
+            },
+        }
+    );
 }
