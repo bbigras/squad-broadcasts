@@ -54,9 +54,9 @@ named!(pub parse_state_change<&[u8], StateChange>, ws!(do_parse!(
         to: map_res!(not_line_ending, str::from_utf8) >>
 
         (StateChange {
-            timestamp: timestamp.into(),
-            from: from.into(),
-            to: to.into(),
+            timestamp: timestamp,
+            from: from,
+            to: to,
         })
 )));
 
@@ -170,8 +170,8 @@ named!(pub parse_map_broadcast<&str, MapBroadcast>, ws!(do_parse!(
         broadcast: not_line_ending >>
 
         (MapBroadcast {
-            map: map.into(),
-            broadcast: broadcast.into(),
+            map: map,
+            broadcast: broadcast,
         })
 )));
 

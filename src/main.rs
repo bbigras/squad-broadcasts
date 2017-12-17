@@ -46,10 +46,10 @@ use std::env;
 use std::{thread, time};
 use std::net::SocketAddr;
 
-const BRINGING_WORLD: &'static [u8] = b"Bringing World";
-const MATCH_STATE_CHANGED: &'static [u8] = b"Match State Changed from";
-const CONFIG_FILE: &'static str = "broadcasts.toml";
-const LOG_FILE: &'static str = "Squad.log";
+const BRINGING_WORLD: &[u8] = b"Bringing World";
+const MATCH_STATE_CHANGED: &[u8] = b"Match State Changed from";
+const CONFIG_FILE: &str = "broadcasts.toml";
+const LOG_FILE: &str = "Squad.log";
 
 #[derive(Clone, Debug, Deserialize, PartialEq)]
 struct Config {
@@ -133,7 +133,7 @@ fn line_map_change(
                 let map = log_state
                     .current_map
                     .as_ref()
-                    .ok_or(err_msg("current map is not set"))?;
+                    .ok_or_else(|| err_msg("current map is not set"))?;
 
                 if let Some(msg) = maps::get_broadcast(map)? {
                     let cfg_clone = cfg.clone();
@@ -168,7 +168,7 @@ fn line_map_change(
             let map = log_state
                 .current_map
                 .as_ref()
-                .ok_or(err_msg("current map is not set"))?;
+                .ok_or_else(|| err_msg("current map is not set"))?;
 
             if let Some(msg) = maps::get_broadcast(map)? {
                 // send the broadcast twice
