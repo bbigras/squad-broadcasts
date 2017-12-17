@@ -44,6 +44,7 @@ use std::io::Read;
 use std::fs::{metadata, File};
 use std::env;
 use std::{thread, time};
+use std::net::SocketAddr;
 
 const BRINGING_WORLD: &'static [u8] = b"Bringing World";
 const MATCH_STATE_CHANGED: &'static [u8] = b"Match State Changed from";
@@ -58,7 +59,7 @@ struct Config {
 #[derive(Clone, Debug, Deserialize, PartialEq)]
 struct ServerConfig {
     ip: String,
-    port: u64,
+    port: u16,
     pw: String,
 }
 
@@ -141,8 +142,15 @@ fn line_map_change(
                         for sleep_time in &[10, 10, 30, 30] {
                             thread::sleep(time::Duration::from_secs(*sleep_time));
 
+                            let ip: std::net::IpAddr = cfg_clone
+                                .server
+                                .ip
+                                .parse()
+                                .expect(&format!("can't parse ip: {}", cfg_clone.server.ip));
+                            let addr = SocketAddr::new(ip, cfg_clone.server.port);
+
                             match rcon::exec(
-                                (cfg_clone.server.ip.as_str(), cfg_clone.server.port as u16),
+                                &addr,
                                 &cfg_clone.server.pw,
                                 &format!("AdminBroadcast {}", msg),
                             ) {
@@ -165,11 +173,13 @@ fn line_map_change(
             if let Some(msg) = maps::get_broadcast(map)? {
                 // send the broadcast twice
                 for _ in 0..2 {
-                    match rcon::exec(
-                        (cfg.server.ip.as_str(), cfg.server.port as u16),
-                        &cfg.server.pw,
-                        &format!("AdminBroadcast {}", msg),
-                    ) {
+                    let ip: std::net::IpAddr = cfg.server
+                        .ip
+                        .parse()
+                        .expect(&format!("can't parse ip: {}", cfg.server.ip));
+                    let addr = SocketAddr::new(ip, cfg.server.port);
+
+                    match rcon::exec(&addr, &cfg.server.pw, &format!("AdminBroadcast {}", msg)) {
                         Ok(resp) => info!("rcon response: {}", resp),
                         Err(e) => error!("error while broadcasting: {}", e),
                     }
@@ -312,11 +322,12 @@ fn run() -> Result<(), Error> {
     if matches.is_present("test") {
         info!("test rcon");
         info!("running the ShowNextMap command");
-        let next_map = rcon::exec(
-            (cfg.server.ip.as_str(), cfg.server.port as u16),
-            &cfg.server.pw,
-            "ShowNextMap",
-        ).map_err(|e| format_err!("{:?}", e))?;
+
+        let ip: std::net::IpAddr = cfg.server.ip.parse()?;
+        let addr = SocketAddr::new(ip, cfg.server.port);
+
+        let next_map =
+            rcon::exec(&addr, &cfg.server.pw, "ShowNextMap").map_err(|e| format_err!("{:?}", e))?;
         println!("result: {}", next_map);
         return Ok(());
     }
@@ -401,7 +412,7 @@ fn test_load_config() {
         Config {
             server: ServerConfig {
                 ip: "ip".to_string(),
-                port: 123456,
+                port: 65535,
                 pw: "rcon password".to_string(),
             },
         }
