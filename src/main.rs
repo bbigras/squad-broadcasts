@@ -1,7 +1,5 @@
-#![recursion_limit = "1024"]
-
 #[macro_use]
-extern crate error_chain;
+extern crate failure;
 
 #[macro_use]
 extern crate nom;
@@ -40,35 +38,17 @@ use chrono::{DateTime, TimeZone};
 
 use clap::{App, Arg};
 
+use failure::{err_msg, Error, ResultExt};
+
 use std::io::Read;
 use std::fs::{metadata, File};
 use std::env;
-use std::{error, fmt};
 use std::{thread, time};
 
 const BRINGING_WORLD: &'static [u8] = b"Bringing World";
 const MATCH_STATE_CHANGED: &'static [u8] = b"Match State Changed from";
 const CONFIG_FILE: &'static str = "broadcasts.toml";
 const LOG_FILE: &'static str = "Squad.log";
-
-mod errors {
-    // Create the Error, ErrorKind, ResultExt, and Result types
-    error_chain! {
-        foreign_links {
-            Io(::std::io::Error);
-            ParseInt(::std::num::ParseIntError);
-            Toml(::toml::de::Error);
-            Env(::std::env::VarError);
-            Log(::log::SetLoggerError);
-        }
-
-        links {
-            Rcon(::rcon::errors::Error, ::rcon::errors::ErrorKind);
-        }
-    }
-}
-
-use errors::*;
 
 #[derive(Clone, Debug, Deserialize, PartialEq)]
 struct Config {
@@ -82,22 +62,6 @@ struct ServerConfig {
     pw: String,
 }
 
-// TODO: shouldn't need this
-#[derive(Debug)]
-pub struct StringError(String);
-
-impl fmt::Display for StringError {
-    fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
-        fmt.write_str(&self.0)
-    }
-}
-
-impl error::Error for StringError {
-    fn description(&self) -> &str {
-        &self.0
-    }
-}
-
 struct StateTime {
     state: String,
     datetime: DateTime<chrono::Utc>,
@@ -109,11 +73,11 @@ struct LogState {
     last_file_size: Option<u64>,
 }
 
-fn line_bringing_world(l: &[u8], is_preload: &bool, log_state: &mut LogState) -> Result<()> {
+fn line_bringing_world(l: &[u8], is_preload: &bool, log_state: &mut LogState) -> Result<(), Error> {
     let r = parse_bringing_world(l)
         .to_full_result()
-        .map_err(|e| StringError(format!("{:?}", e)))
-        .chain_err(|| "can't parse_bringing_world")?;
+        .map_err(|e| format_err!("{:?}", e))
+        .context("can't parse_bringing_world")?;
 
     if r.map != "/Game/Maps/TransitionMap.TransitionMap" {
         if !is_preload {
@@ -131,15 +95,15 @@ fn line_map_change(
     is_preload: &bool,
     log_state: &mut LogState,
     cfg: &Config,
-) -> Result<()> {
+) -> Result<(), Error> {
     let r = parse_state_change(l)
         .to_full_result()
-        .map_err(|e| StringError(format!("{:?}", e)))
-        .chain_err(|| "can't parse_state_change")?;
+        .map_err(|e| format_err!("{:?}", e))
+        .context("can't parse_state_change")?;
     let parsed = parse_timestamp(r.timestamp)
         .to_full_result()
-        .map_err(|e| StringError(format!("{:?}", e)))
-        .chain_err(|| "can't parse_timestamp")?;
+        .map_err(|e| format_err!("{:?}", e))
+        .context("can't parse_timestamp")?;
 
     let datetime = Utc.ymd(
         parsed.year.parse()?,
@@ -168,7 +132,7 @@ fn line_map_change(
                 let map = log_state
                     .current_map
                     .as_ref()
-                    .ok_or("current map is not set")?;
+                    .ok_or(err_msg("current map is not set"))?;
 
                 if let Some(msg) = maps::get_broadcast(map)? {
                     let cfg_clone = cfg.clone();
@@ -196,7 +160,7 @@ fn line_map_change(
             let map = log_state
                 .current_map
                 .as_ref()
-                .ok_or("current map is not set")?;
+                .ok_or(err_msg("current map is not set"))?;
 
             if let Some(msg) = maps::get_broadcast(map)? {
                 // send the broadcast twice
@@ -222,7 +186,7 @@ fn line_map_change(
     Ok(())
 }
 
-fn parse_line(l: &[u8], is_preload: &bool, log_state: &mut LogState, cfg: &Config) -> Result<()> {
+fn parse_line(l: &[u8], is_preload: &bool, log_state: &mut LogState, cfg: &Config) -> Result<(), Error> {
     //let l = l.trim();
 
     if is_binging_world(l) {
@@ -238,7 +202,7 @@ fn follow_log<R: Read>(
     reader: &mut StreamReader<R>,
     log_state: &mut LogState,
     cfg: &Config,
-) -> Result<()> {
+) -> Result<(), Error> {
     let mut is_preload = true;
 
     info!("preloading log");
@@ -286,7 +250,7 @@ fn follow_log<R: Read>(
     Ok(())
 }
 
-fn init_log() -> Result<()> {
+fn init_log() -> Result<(), Error> {
     let format = |record: &LogRecord| {
         format!(
             "{} - {} - {}",
@@ -310,7 +274,7 @@ fn init_log() -> Result<()> {
     Ok(())
 }
 
-fn open_log(cfg: &Config) -> Result<()> {
+fn open_log(cfg: &Config) -> Result<(), Error> {
     let f = File::open(LOG_FILE)?;
 
     let mut reader = StreamReader::new(f);
@@ -326,7 +290,7 @@ fn open_log(cfg: &Config) -> Result<()> {
     Ok(())
 }
 
-fn load_config(file_name: &str) -> Result<Config> {
+fn load_config(file_name: &str) -> Result<Config, Error> {
     let mut f = File::open(file_name)?;
 
     let mut buffer = String::new();
@@ -336,7 +300,7 @@ fn load_config(file_name: &str) -> Result<Config> {
     Ok(cfg)
 }
 
-fn run() -> Result<()> {
+fn run() -> Result<(), Error> {
     init_log().expect("can't init log");
 
     let matches = App::new("squad auto broadcasts")
@@ -352,7 +316,7 @@ fn run() -> Result<()> {
             (cfg.server.ip.as_str(), cfg.server.port as u16),
             &cfg.server.pw,
             "ShowNextMap",
-        )?;
+        ).map_err(|e| format_err!("{:?}", e))?;
         println!("result: {}", next_map);
         return Ok(());
     }
@@ -365,7 +329,9 @@ fn run() -> Result<()> {
     }
 }
 
-quick_main!(run);
+fn main() {
+    run().unwrap();
+}
 
 fn is_map_change(data: &[u8]) -> bool {
     if data.is_empty() {

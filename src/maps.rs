@@ -1,8 +1,7 @@
 use std::io::{BufRead, BufReader};
 use std::fs::File;
 
-use errors::*;
-use StringError;
+use failure::{err_msg, Error, ResultExt};
 
 use parsers::parse_map_broadcast;
 use parsers::parse_map_names;
@@ -11,7 +10,7 @@ use parsers::MapName;
 const MAPS_FILE: &'static str = "dpg-Maps.cfg";
 const BROADCAST_FILE: &'static str = "dpg-Broadcasts.cfg";
 
-fn load_map_names() -> Result<Vec<MapName>> {
+fn load_map_names() -> Result<Vec<MapName>, Error> {
     let mut list = Vec::new();
 
     let f = BufReader::new(File::open(MAPS_FILE)?);
@@ -19,20 +18,20 @@ fn load_map_names() -> Result<Vec<MapName>> {
     for line in f.lines() {
         let parsed = parse_map_names(&line?)
             .to_full_result()
-            .map_err(|e| StringError(format!("{:?}", e)))
-            .chain_err(|| "can't parse_map_names")?;
+            .map_err(|e| format_err!("{:?}", e))
+            .context("can't parse_map_names")?;
         list.push(parsed);
     }
 
     Ok(list)
 }
 
-pub fn get_broadcast(map_long_name: &str) -> Result<Option<String>> {
+pub fn get_broadcast(map_long_name: &str) -> Result<Option<String>, Error> {
     let maps = load_map_names()?;
 
     let map = maps.iter()
         .find(|m| map_long_name.starts_with(&m.long_name))
-        .ok_or_else(|| "can't find map".to_string())?;
+        .ok_or_else(|| err_msg("can't find map"))?;
 
     let f = File::open(BROADCAST_FILE)?;
     let f = BufReader::new(f);
@@ -42,8 +41,8 @@ pub fn get_broadcast(map_long_name: &str) -> Result<Option<String>> {
 
         let parsed = parse_map_broadcast(&l)
             .to_full_result()
-            .map_err(|e| StringError(format!("{:?}", e)))
-            .chain_err(|| "can't parse_map_broadcast")?;
+            .map_err(|e| format_err!("{:?}", e))
+            .context("can't parse_map_broadcast")?;
         if map.short_name == parsed.map {
             return Ok(Some(parsed.broadcast.to_string()));
         }
