@@ -19,4 +19,4 @@ The binary will be in the `target\release` folder.
 
 ## Run
 
-Run the application in the same folder as Squad.log with `broadcasts-sample.toml` (renamed to `broadcasts.toml`), `dpg-Broadcasts.cfg` and `dpg-Maps.cfg`.
+Run the application in the same folder as Squad.log with `broadcasts-sample.toml` (renamed to `broadcasts.toml`), `Broadcasts.cfg` and `Maps.cfg`.

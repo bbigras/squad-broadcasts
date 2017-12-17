@@ -7,8 +7,8 @@ use parsers::parse_map_broadcast;
 use parsers::parse_map_names;
 use parsers::MapName;
 
-const MAPS_FILE: &str = "dpg-Maps.cfg";
-const BROADCAST_FILE: &str = "dpg-Broadcasts.cfg";
+const MAPS_FILE: &str = "Maps.cfg";
+const BROADCAST_FILE: &str = "Broadcasts.cfg";
 
 fn load_map_names() -> Result<Vec<MapName>, Error> {
     let mut list = Vec::new();
