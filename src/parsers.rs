@@ -177,7 +177,8 @@ named!(pub parse_map_broadcast<&str, MapBroadcast>, ws!(do_parse!(
 
 #[test]
 fn test_parse_map_broadcast() {
-    let data = "/Game/Maps/BASRAH_CITY/Albasrah_aas_v1.Albasrah_aas_v1=DO NOT RUSH ANY VILLAGE/REFINERY";
+    let data =
+        "/Game/Maps/BASRAH_CITY/Albasrah_aas_v1.Albasrah_aas_v1=DO NOT RUSH ANY VILLAGE/REFINERY";
 
     let parsed = parse_map_broadcast(&data).to_result().unwrap();
 

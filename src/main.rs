@@ -111,10 +111,10 @@ fn line_map_change(
         parsed.month.parse()?,
         parsed.day.parse()?,
     ).and_hms(
-            parsed.hour.parse()?,
-            parsed.minute.parse()?,
-            parsed.second.parse()?,
-        );
+        parsed.hour.parse()?,
+        parsed.minute.parse()?,
+        parsed.second.parse()?,
+    );
 
     let ignore_change = {
         match log_state.last_state_change {
@@ -196,7 +196,12 @@ fn line_map_change(
     Ok(())
 }
 
-fn parse_line(l: &[u8], is_preload: &bool, log_state: &mut LogState, cfg: &Config) -> Result<(), Error> {
+fn parse_line(
+    l: &[u8],
+    is_preload: &bool,
+    log_state: &mut LogState,
+    cfg: &Config,
+) -> Result<(), Error> {
     //let l = l.trim();
 
     if is_binging_world(l) {
@@ -360,7 +365,8 @@ fn test_is_map_change() {
     let data2 = "[2017.07.28-02.48.23:803][639]LogGameMode:Display: Match State Changed from InProgress to WaitingPostMatch";
     let data3 = "[2017.07.26-17.11.04:357][569]LogRCONServer:Verbose: 7028:FRCONServer::Tick(): Message received:";
     let data4 = "";
-    let data5 = "[2017.07.26-18.59.35:521][851]LogNet: Join succeeded: ВесёлыйКолбасниk";
+    let data5 =
+        "[2017.07.26-18.59.35:521][851]LogNet: Join succeeded: ВесёлыйКолбасниk";
     let data6 = "[2017.07.28-02.47.55:163][312]LogGameState: Match State Changed from";
     let data7 = "[2017.07.28-02.47.55:163][312]LogGameState: Match State Changed fro";
     let data8 = "[2017.07.28-02.48.23:803][639]LogGameMode:Display: Match State Changed from";
@@ -391,7 +397,8 @@ fn test_is_binging_world() {
     let data2 = "[2017.07.28-02.48.23:803][639]LogGameMode:Display: Match State Changed from InProgress to WaitingPostMatch";
     let data3 = "[2017.07.26-17.11.04:357][569]LogRCONServer:Verbose: 7028:FRCONServer::Tick(): Message received:";
     let data4 = "";
-    let data5 = "[2017.07.26-18.59.35:521][851]LogNet: Join succeeded: ВесёлыйКолбасниk";
+    let data5 =
+        "[2017.07.26-18.59.35:521][851]LogNet: Join succeeded: ВесёлыйКолбасниk";
     let data6 = "[2017.07.27-22.30.32:563][814]LogWorld: Bringing World";
     let data7 = "[2017.07.27-22.30.32:563][814]LogWorld: Bringing Worl";
 
