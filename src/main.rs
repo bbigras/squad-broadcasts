@@ -334,7 +334,12 @@ fn run() -> Result<(), Error> {
 }
 
 fn main() {
-    run().unwrap();
+    if let Err(e) = run() {
+        error!("error: {:?}", e);
+        for cause in e.causes() {
+            println!("{}", cause);
+        }
+    }
 }
 
 fn is_map_change(data: &[u8]) -> bool {
