@@ -2,49 +2,37 @@
 extern crate failure;
 
 #[macro_use]
-extern crate nom;
-
-extern crate env_logger;
-#[macro_use]
 extern crate log;
 
-extern crate stream_line_reader;
-
-extern crate chrono;
-
-extern crate toml;
+#[macro_use]
+extern crate nom;
 
 #[macro_use]
 extern crate serde_derive;
 
+extern crate chrono;
 extern crate clap;
+extern crate env_logger;
+extern crate rcon;
+extern crate stream_line_reader;
+extern crate toml;
 
 mod parsers;
 mod maps;
 
-extern crate rcon;
-
-use parsers::parse_bringing_world;
-use parsers::parse_state_change;
-use parsers::parse_timestamp;
-
-use stream_line_reader::StreamReader;
-
-use log::{LogLevelFilter, LogRecord};
-use env_logger::LogBuilder;
-
 use chrono::offset::{Local, Utc};
 use chrono::{DateTime, TimeZone};
-
 use clap::{App, Arg};
-
+use env_logger::LogBuilder;
 use failure::{err_msg, Error, ResultExt};
+use log::{LogLevelFilter, LogRecord};
+use parsers::{parse_bringing_world, parse_state_change, parse_timestamp};
+use stream_line_reader::StreamReader;
 
-use std::io::Read;
 use std::fs::{metadata, File};
-use std::env;
-use std::{thread, time};
+use std::io::Read;
 use std::net::SocketAddr;
+use std::{env, thread, time};
 
 const BRINGING_WORLD: &[u8] = b"Bringing World";
 const MATCH_STATE_CHANGED: &[u8] = b"Match State Changed from";
