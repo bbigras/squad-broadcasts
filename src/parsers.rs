@@ -131,35 +131,6 @@ fn test_parse_time() {
 }
 
 #[derive(Debug, PartialEq)]
-pub struct MapName {
-    pub short_name: String,
-    pub long_name: String,
-}
-
-named!(pub parse_map_names<&str, MapName>, ws!(do_parse!(
-        short_name: take_until_and_consume!("=") >>
-        long_name: not_line_ending >>
-
-        (MapName {
-            short_name: short_name.into(),
-            long_name: long_name.into(),
-        })
-)));
-
-#[test]
-fn test_parse_map_names() {
-    let data = "Logar PAAS V1=/Game/Maps/Logar_Valley/Logar_Valley_PAAS/LogarValley_PAAS_v1";
-
-    let parsed = parse_map_names(&data).to_result().unwrap();
-
-    assert_eq!(parsed.short_name, "Logar PAAS V1");
-    assert_eq!(
-        parsed.long_name,
-        "/Game/Maps/Logar_Valley/Logar_Valley_PAAS/LogarValley_PAAS_v1"
-    );
-}
-
-#[derive(Debug, PartialEq)]
 pub struct MapBroadcast<'a> {
     pub map: &'a str,
     pub broadcast: &'a str,

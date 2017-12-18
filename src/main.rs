@@ -17,6 +17,7 @@ extern crate rcon;
 extern crate stream_line_reader;
 extern crate toml;
 
+mod default_game;
 mod parsers;
 mod maps;
 
@@ -28,6 +29,7 @@ use failure::{err_msg, Error, ResultExt};
 use log::{LogLevelFilter, LogRecord};
 use parsers::{parse_bringing_world, parse_state_change, parse_timestamp};
 use stream_line_reader::StreamReader;
+use default_game::load_default_game_ini;
 
 use std::fs::{metadata, File};
 use std::io::Read;
@@ -305,6 +307,15 @@ fn load_config(file_name: &str) -> Result<Config, Error> {
 
 fn run() -> Result<(), Error> {
     init_log().expect("can't init log");
+
+    let maps = load_default_game_ini()?;
+    let msgs = maps::load_broadcast_msg()?;
+
+    for map in &maps {
+        if !msgs.iter().any(|m| map.short_name == m.map) {
+            warn!("layer '{}' is missing from config file", map.short_name);
+        }
+    }
 
     let matches = App::new("squad auto broadcasts")
         .arg(Arg::with_name("test").long("test").help("test rcon"))
