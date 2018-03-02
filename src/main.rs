@@ -217,7 +217,7 @@ fn follow_log<R: Read>(
             Ok(l) => {
                 match l {
                     Some(l2) => if let Err(e) = parse_line(l2, &is_preload, log_state, cfg) {
-                        error!("error parsing line: {}\n{:?}", e, l2);
+                        error!("error parsing line: {}\n{:?}\n{}", e, l2, String::from_utf8_lossy(&l2));
                     },
                     None => {
                         if is_preload {
