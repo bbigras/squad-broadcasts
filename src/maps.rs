@@ -14,7 +14,7 @@ pub struct MapBroadcastOwned {
 }
 
 pub fn load_broadcast_msg() -> Result<Vec<MapBroadcastOwned>, Error> {
-    let f = File::open(BROADCAST_FILE)?;
+    let f = File::open(BROADCAST_FILE).context(format!("can't open {}", BROADCAST_FILE))?;
     let f = BufReader::new(f);
 
     let mut list = Vec::new();
@@ -43,7 +43,7 @@ pub fn get_broadcast(map_long_name: &str) -> Result<Option<String>, Error> {
         .find(|m| map_long_name.starts_with(&m.long_name))
         .ok_or_else(|| err_msg("can't find map"))?;
     
-    let f = File::open(BROADCAST_FILE)?;
+    let f = File::open(BROADCAST_FILE).context(format!("can't open {}", BROADCAST_FILE))?;
     let f = BufReader::new(f);
 
     for line in f.lines() {

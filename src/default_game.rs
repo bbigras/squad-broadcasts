@@ -1,10 +1,10 @@
 use std::fs::File;
 use std::io::{BufRead, BufReader};
 
-use failure::Error;
+use failure::{Error, ResultExt};
 
 pub fn load_default_game_ini() -> Result<Vec<MapShortLong>, Error> {
-    let f = File::open("DefaultGame.ini")?;
+    let f = File::open("DefaultGame.ini").context("can't open DefaultGame.ini")?;
     let reader = BufReader::new(f);
 
     let mut list = Vec::new();

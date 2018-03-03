@@ -280,7 +280,7 @@ fn init_log() -> Result<(), Error> {
 }
 
 fn open_log(cfg: &Config) -> Result<(), Error> {
-    let f = File::open(LOG_FILE)?;
+    let f = File::open(LOG_FILE).context(format!("can't open {}", LOG_FILE))?;
 
     let mut reader = StreamReader::new(f);
 
@@ -296,7 +296,7 @@ fn open_log(cfg: &Config) -> Result<(), Error> {
 }
 
 fn load_config(file_name: &str) -> Result<Config, Error> {
-    let mut f = File::open(file_name)?;
+    let mut f = File::open(file_name).context(format!("can't open {}", LOG_FILE))?;
 
     let mut buffer = String::new();
     f.read_to_string(&mut buffer)?;
