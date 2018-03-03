@@ -129,7 +129,7 @@ fn line_map_change(
                     let cfg_clone = cfg.clone();
                     thread::spawn(move || {
                         info!("start loop");
-                        for sleep_time in &[10, 10, 30, 30] {
+                        for sleep_time in &[1, 10, 15] {
                             thread::sleep(time::Duration::from_secs(*sleep_time));
 
                             let ip: std::net::IpAddr = cfg_clone
@@ -162,7 +162,8 @@ fn line_map_change(
 
             if let Some(msg) = maps::get_broadcast(map)? {
                 // send the broadcast twice
-                for _ in 0..2 {
+                for sleep_time in &[1, 30, 30, 30, 30, 1] {
+                        thread::sleep(time::Duration::from_secs(*sleep_time));
                     let ip: std::net::IpAddr = cfg.server
                         .ip
                         .parse()
