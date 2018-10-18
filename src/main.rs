@@ -297,7 +297,7 @@ fn open_log(cfg: &Config) -> Result<(), Error> {
 }
 
 fn load_config(file_name: &str) -> Result<Config, Error> {
-    let mut f = File::open(file_name).context(format!("can't open {}", LOG_FILE))?;
+    let mut f = File::open(file_name).context(format!("can't open {}", file_name))?;
 
     let mut buffer = String::new();
     f.read_to_string(&mut buffer)?;
