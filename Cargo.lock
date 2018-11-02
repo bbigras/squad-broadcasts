@@ -200,7 +200,7 @@ dependencies = [
 [[package]]
 name = "rcon"
 version = "0.1.0"
-source = "git+https://github.com/bbigras/rs-rcon.git#d4710020249cd98814ddca857b7588b46a6ab262"
+source = "git+https://github.com/bbigras/rs-rcon.git#e56be493df0eeb14fe8a2874a53c0cf0972b8e50"
 dependencies = [
  "byteorder 1.2.7 (registry+https://github.com/rust-lang/crates.io-index)",
  "failure 0.1.3 (registry+https://github.com/rust-lang/crates.io-index)",
