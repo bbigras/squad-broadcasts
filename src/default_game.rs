@@ -16,7 +16,7 @@ pub fn load_default_game_ini() -> Result<Vec<MapShortLong>, Error> {
             let parsed = parse_map_line(&l).to_result().unwrap();
 
             if parsed.paths.len() == 1 {
-                list.push(MapShortLong{
+                list.push(MapShortLong {
                     short_name: parsed.short_name.to_string(),
                     long_name: parsed.paths.iter().next().unwrap().to_string(), // TODO .first()
                 });
@@ -55,7 +55,16 @@ fn test() {
     let data = r#"+ValidMapsList=(ShortName="Logar", MapPaths=("/Game/Maps/Logar_Valley/LogarValley_AAS_v1", "/Game/Maps/Logar_Valley/Logar_Valley_2/LogarValley_AAS_INF_v1", "/Game/Maps/Logar_Valley/Logar_Valley_2_INS/LogarValley_INS_v1", "/Game/Maps/Logar_Valley/Logar_Valley_3_INS/LogarValley_INS_v1_Night", "/Game/Maps/Logar_Valley/Logar_Valley_PAAS/LogarValley_PAAS_v1"), LoadingScreenTexturePath="/Game/UI/Menu/LoadingScreen.LoadingScreen")"#;
     let parsed = parse_map_line(&data).to_result().unwrap();
     assert_eq!(parsed.short_name, "Logar".to_string());
-    assert_eq!(parsed.paths, vec!["/Game/Maps/Logar_Valley/LogarValley_AAS_v1", "/Game/Maps/Logar_Valley/Logar_Valley_2/LogarValley_AAS_INF_v1", "/Game/Maps/Logar_Valley/Logar_Valley_2_INS/LogarValley_INS_v1", "/Game/Maps/Logar_Valley/Logar_Valley_3_INS/LogarValley_INS_v1_Night", "/Game/Maps/Logar_Valley/Logar_Valley_PAAS/LogarValley_PAAS_v1"]);
+    assert_eq!(
+        parsed.paths,
+        vec![
+            "/Game/Maps/Logar_Valley/LogarValley_AAS_v1",
+            "/Game/Maps/Logar_Valley/Logar_Valley_2/LogarValley_AAS_INF_v1",
+            "/Game/Maps/Logar_Valley/Logar_Valley_2_INS/LogarValley_INS_v1",
+            "/Game/Maps/Logar_Valley/Logar_Valley_3_INS/LogarValley_INS_v1_Night",
+            "/Game/Maps/Logar_Valley/Logar_Valley_PAAS/LogarValley_PAAS_v1"
+        ]
+    );
 }
 
 #[test]

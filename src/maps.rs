@@ -1,5 +1,5 @@
-use std::io::{BufRead, BufReader};
 use std::fs::File;
+use std::io::{BufRead, BufReader};
 
 use failure::{err_msg, Error, ResultExt};
 
@@ -27,7 +27,7 @@ pub fn load_broadcast_msg() -> Result<Vec<MapBroadcastOwned>, Error> {
             .map_err(|e| format_err!("{:?}", e))
             .context("can't parse_map_broadcast")?;
 
-        list.push(MapBroadcastOwned{
+        list.push(MapBroadcastOwned {
             map: parsed.map.to_string(),
             broadcast: parsed.broadcast.to_string(),
         });
@@ -39,10 +39,11 @@ pub fn load_broadcast_msg() -> Result<Vec<MapBroadcastOwned>, Error> {
 pub fn get_broadcast(map_long_name: &str) -> Result<Option<String>, Error> {
     let maps = load_default_game_ini()?;
 
-    let map = maps.iter()
+    let map = maps
+        .iter()
         .find(|m| map_long_name.starts_with(&m.long_name))
         .ok_or_else(|| err_msg("can't find map"))?;
-    
+
     let f = File::open(BROADCAST_FILE).context(format!("can't open {}", BROADCAST_FILE))?;
     let f = BufReader::new(f);
 
@@ -71,5 +72,8 @@ fn test_get_broadcast() {
     );
 
     let r = get_broadcast("/Game/Maps/Jensens_Range/Jensens_Range").unwrap();
-    assert_eq!(r, Some("WELCOME TO THE FIRING RANGE! FOLLOW ADMIN INSTRUCTIONS AND HAVE FUN!".to_string()));
+    assert_eq!(
+        r,
+        Some("WELCOME TO THE FIRING RANGE! FOLLOW ADMIN INSTRUCTIONS AND HAVE FUN!".to_string())
+    );
 }

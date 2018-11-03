@@ -18,22 +18,22 @@ extern crate stream_line_reader;
 extern crate toml;
 
 mod default_game;
-mod parsers;
 mod maps;
+mod parsers;
 
 use chrono::offset::{Local, Utc};
 use chrono::{DateTime, TimeZone};
 use clap::{App, Arg};
+use default_game::load_default_game_ini;
 use env_logger::LogBuilder;
 use failure::{err_msg, Error, ResultExt};
 use log::{LogLevelFilter, LogRecord};
 use parsers::{parse_bringing_world, parse_state_change, parse_timestamp};
 use stream_line_reader::StreamReader;
-use default_game::load_default_game_ini;
 
 use std::fs::{metadata, File};
-use std::io::Read;
 use std::io::BufRead;
+use std::io::Read;
 use std::net::SocketAddr;
 use std::{env, thread, time};
 
@@ -97,15 +97,17 @@ fn line_map_change(
         .map_err(|e| format_err!("{:?}", e))
         .context("can't parse_timestamp")?;
 
-    let datetime = Utc.ymd(
-        parsed.year.parse()?,
-        parsed.month.parse()?,
-        parsed.day.parse()?,
-    ).and_hms(
-        parsed.hour.parse()?,
-        parsed.minute.parse()?,
-        parsed.second.parse()?,
-    );
+    let datetime = Utc
+        .ymd(
+            parsed.year.parse()?,
+            parsed.month.parse()?,
+            parsed.day.parse()?,
+        )
+        .and_hms(
+            parsed.hour.parse()?,
+            parsed.minute.parse()?,
+            parsed.second.parse()?,
+        );
 
     let ignore_change = {
         match log_state.last_state_change {
@@ -164,8 +166,9 @@ fn line_map_change(
             if let Some(msg) = maps::get_broadcast(map)? {
                 // send the broadcast twice
                 for sleep_time in &[1, 30, 30, 30, 30, 1] {
-                        thread::sleep(time::Duration::from_secs(*sleep_time));
-                    let ip: std::net::IpAddr = cfg.server
+                    thread::sleep(time::Duration::from_secs(*sleep_time));
+                    let ip: std::net::IpAddr = cfg
+                        .server
                         .ip
                         .parse()
                         .expect(&format!("can't parse ip: {}", cfg.server.ip));
@@ -220,34 +223,39 @@ fn follow_log<R: BufRead>(
                 match l {
                     Some(l2) => {
                         if let Err(e) = parse_line(l2, &is_preload, log_state, cfg) {
-                        error!("error parsing line: {}\n{:?}\n{}", e, l2, String::from_utf8_lossy(&l2));
+                            error!(
+                                "error parsing line: {}\n{:?}\n{}",
+                                e,
+                                l2,
+                                String::from_utf8_lossy(&l2)
+                            );
+                        }
                     }
-                    },
                     None => {
                         if done {
-                        if is_preload {
-                            info!("preloading done");
-                        }
-                        //TODO: would be better to check for EOF
-
-                        is_preload = false;
-
-                        // Check if the log file rotated
-                        let metadata = metadata(LOG_FILE)?;
-
-                        if let Some(l) = log_state.last_file_size {
-                            if metadata.len() < l {
-                                info!("file is smaller, reopen");
-                                return Ok(());
+                            if is_preload {
+                                info!("preloading done");
                             }
+                            //TODO: would be better to check for EOF
+
+                            is_preload = false;
+
+                            // Check if the log file rotated
+                            let metadata = metadata(LOG_FILE)?;
+
+                            if let Some(l) = log_state.last_file_size {
+                                if metadata.len() < l {
+                                    info!("file is smaller, reopen");
+                                    return Ok(());
+                                }
+                            }
+                            log_state.last_file_size = Some(metadata.len());
+
+                            debug!("sleep");
+                            thread::sleep(time::Duration::from_secs(1));
+
+                            continue;
                         }
-                        log_state.last_file_size = Some(metadata.len());
-
-                        debug!("sleep");
-                        thread::sleep(time::Duration::from_secs(1));
-
-                        continue;
-                    }
                     }
                 }
             }
