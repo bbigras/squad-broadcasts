@@ -255,7 +255,6 @@ fn follow_log<R: BufRead>(
                             }
                             log_state.last_file_size = Some(metadata.len());
 
-                            debug!("sleep");
                             thread::sleep(time::Duration::from_secs(1));
 
                             continue;
