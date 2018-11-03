@@ -33,6 +33,7 @@ use default_game::load_default_game_ini;
 
 use std::fs::{metadata, File};
 use std::io::Read;
+use std::io::BufRead;
 use std::net::SocketAddr;
 use std::{env, thread, time};
 
@@ -204,7 +205,7 @@ fn parse_line(
     Ok(())
 }
 
-fn follow_log<R: Read>(
+fn follow_log<R: BufRead>(
     reader: &mut StreamReader<R>,
     log_state: &mut LogState,
     cfg: &Config,
@@ -215,12 +216,15 @@ fn follow_log<R: Read>(
 
     loop {
         match reader.line() {
-            Ok(l) => {
+            Ok((done, l)) => {
                 match l {
-                    Some(l2) => if let Err(e) = parse_line(l2, &is_preload, log_state, cfg) {
+                    Some(l2) => {
+                        if let Err(e) = parse_line(l2, &is_preload, log_state, cfg) {
                         error!("error parsing line: {}\n{:?}\n{}", e, l2, String::from_utf8_lossy(&l2));
+                    }
                     },
                     None => {
+                        if done {
                         if is_preload {
                             info!("preloading done");
                         }
@@ -243,6 +247,7 @@ fn follow_log<R: Read>(
                         thread::sleep(time::Duration::from_secs(1));
 
                         continue;
+                    }
                     }
                 }
             }
@@ -283,7 +288,10 @@ fn init_log() -> Result<(), Error> {
 fn open_log(cfg: &Config) -> Result<(), Error> {
     let f = File::open(LOG_FILE).context(format!("can't open {}", LOG_FILE))?;
 
-    let mut reader = StreamReader::new(f);
+    use std::io::BufReader;
+    let r = BufReader::new(f);
+
+    let mut reader = StreamReader::new(r);
 
     let mut log_state = LogState {
         current_map: None,
