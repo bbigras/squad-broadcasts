@@ -25,9 +25,8 @@ use chrono::offset::{Local, Utc};
 use chrono::{DateTime, TimeZone};
 use clap::{App, Arg};
 use default_game::load_default_game_ini;
-use env_logger::LogBuilder;
+use env_logger::Env;
 use failure::{err_msg, Error, ResultExt};
-use log::{LogLevelFilter, LogRecord};
 use parsers::{parse_bringing_world, parse_state_change, parse_timestamp};
 use stream_line_reader::StreamReader;
 
@@ -269,30 +268,6 @@ fn follow_log<R: BufRead>(
     Ok(())
 }
 
-fn init_log() -> Result<(), Error> {
-    let format = |record: &LogRecord| {
-        format!(
-            "{} - {} - {}",
-            Local::now().format("%Y-%m-%d %H:%M:%S,%f"),
-            record.level(),
-            record.args()
-        )
-    };
-
-    let mut builder = LogBuilder::new();
-    builder
-        .format(format)
-        .filter(None, LogLevelFilter::Info)
-        .filter(Some("reqwest"), LogLevelFilter::Warn);
-
-    if env::var("RUST_LOG").is_ok() {
-        builder.parse(&env::var("RUST_LOG")?);
-    }
-
-    builder.init()?;
-    Ok(())
-}
-
 fn open_log(cfg: &Config) -> Result<(), Error> {
     let f = File::open(LOG_FILE).context(format!("can't open {}", LOG_FILE))?;
 
@@ -323,8 +298,6 @@ fn load_config(file_name: &str) -> Result<Config, Error> {
 }
 
 fn run() -> Result<(), Error> {
-    init_log().expect("can't init log");
-
     let maps = load_default_game_ini()?;
     let msgs = maps::load_broadcast_msg()?;
 
@@ -362,6 +335,9 @@ fn run() -> Result<(), Error> {
 }
 
 fn main() {
+    let env = Env::default().filter_or("RUST_LOG", "debug");
+    env_logger::init_from_env(env);
+
     if let Err(e) = run() {
         error!("error: {:?}", e);
         for cause in e.causes() {
