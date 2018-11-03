@@ -41,6 +41,11 @@ const MATCH_STATE_CHANGED: &[u8] = b"Match State Changed from";
 const CONFIG_FILE: &str = "broadcasts.toml";
 const LOG_FILE: &str = "Squad.log";
 
+pub mod built_info {
+    // The file has been placed there by the build script.
+    include!(concat!(env!("OUT_DIR"), "/built.rs"));
+}
+
 #[derive(Clone, Debug, Deserialize, PartialEq)]
 struct Config {
     server: ServerConfig,
@@ -337,6 +342,20 @@ fn run() -> Result<(), Error> {
 fn main() {
     let env = Env::default().filter_or("RUST_LOG", "debug");
     env_logger::init_from_env(env);
+
+    info!(
+        "This is version {}{}, built for {} by {}.",
+        built_info::PKG_VERSION,
+        built_info::GIT_VERSION.map_or_else(|| "".to_owned(), |v| format!(" (git {})", v)),
+        built_info::TARGET,
+        built_info::RUSTC_VERSION
+    );
+    info!(
+        "I was built with profile \"{}\", features \"{}\" on {}",
+        built_info::PROFILE,
+        built_info::FEATURES_STR,
+        built_info::BUILT_TIME_UTC
+    );
 
     if let Err(e) = run() {
         error!("error: {:?}", e);
