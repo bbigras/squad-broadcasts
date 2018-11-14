@@ -378,7 +378,7 @@ dependencies = [
 [[package]]
 name = "stream-line-reader"
 version = "0.1.0"
-source = "git+https://github.com/bbigras/stream-line-reader.git#2229657927a54fbf4025578a8f64921f86b12a8e"
+source = "git+https://github.com/bbigras/stream-line-reader.git#b2234f94c8c1ce1dc244f8ffb7b6ba198fae26c0"
 dependencies = [
  "failure 0.1.3 (registry+https://github.com/rust-lang/crates.io-index)",
  "memchr 2.1.1 (registry+https://github.com/rust-lang/crates.io-index)",
