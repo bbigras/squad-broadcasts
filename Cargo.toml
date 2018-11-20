@@ -7,10 +7,10 @@ authors = ["Bruno Bigras <bigras.bruno@gmail.com>"]
 clap = "2"
 byteorder = "1.2"
 chrono = "0.4"
-env_logger = "0.5"
+env_logger = "0.6"
 failure = "0.1"
 log = "0.4"
-nom = "3.2"
+nom = "4.1"
 rcon = { git = "https://github.com/bbigras/rs-rcon.git" }
 stream-line-reader = { git = "https://github.com/bbigras/stream-line-reader.git" }
 toml = "0.4"

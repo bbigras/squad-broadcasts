@@ -5,6 +5,9 @@ use failure::{err_msg, Error, ResultExt};
 
 use default_game::load_default_game_ini;
 use parsers::parse_map_broadcast;
+use nom_result;
+use nom_err;
+use nom::types::CompleteStr;
 
 const BROADCAST_FILE: &str = "Broadcasts.cfg";
 
@@ -22,9 +25,9 @@ pub fn load_broadcast_msg() -> Result<Vec<MapBroadcastOwned>, Error> {
     for line in f.lines() {
         let l = line?;
 
-        let parsed = parse_map_broadcast(&l)
-            .to_full_result()
-            .map_err(|e| format_err!("{:?}", e))
+        let parsed = parse_map_broadcast(CompleteStr(&l))
+            .map(nom_result)
+            .map_err(nom_err)
             .context("can't parse_map_broadcast")?;
 
         list.push(MapBroadcastOwned {
@@ -50,9 +53,9 @@ pub fn get_broadcast(map_long_name: &str) -> Result<Option<String>, Error> {
     for line in f.lines() {
         let l = line?;
 
-        let parsed = parse_map_broadcast(&l)
-            .to_full_result()
-            .map_err(|e| format_err!("{:?}", e))
+        let parsed = parse_map_broadcast(CompleteStr(&l))
+            .map(nom_result)
+            .map_err(nom_err)
             .context("can't parse_map_broadcast")?;
 
         if map.short_name == parsed.map {

@@ -1,5 +1,9 @@
-use nom::{digit, not_line_ending};
+use nom::{digit, not_line_ending, rest};
+use nom::types::{CompleteByteSlice, CompleteStr};
+
 use std::str;
+
+use nom_result;
 
 #[derive(Debug, PartialEq)]
 pub struct Map<'a> {
@@ -26,7 +30,7 @@ named!(pub parse_bringing_world<&[u8], Map>, ws!(do_parse!(
 fn test_parse_bringing_world() {
     let data = "[2017.02.16-16.32.34:844][  0]LogWorld: Bringing World /Game/Maps/Sumari/Sumari_aas_v3/Sumari_aas_v3.Sumari_AAS_v3 up for play (max tick rate 60) at 2017.02.16-16.32.34";
 
-    let parsed = parse_bringing_world(data.as_bytes()).to_result().unwrap();
+    let parsed = parse_bringing_world(data.as_bytes()).map(nom_result).unwrap();
 
     assert_eq!(parsed.timestamp, "2017.02.16-16.32.34");
     assert_eq!(
@@ -42,21 +46,32 @@ pub struct StateChange<'a> {
     pub to: &'a str,
 }
 
-named!(pub parse_state_change<&[u8], StateChange>, ws!(do_parse!(
+#[derive(Debug, PartialEq)]
+pub struct StateChange2 {
+    pub timestamp: String,
+    pub from: String,
+    pub to: String,
+}
+
+fn complete_byte_slice_to_str<'a>(s: CompleteByteSlice<'a>) -> Result<&'a str, str::Utf8Error> {
+    str::from_utf8(s.0)
+}
+
+named!(pub parse_state_change<CompleteByteSlice, StateChange2>, ws!(do_parse!(
         tag!("[") >>
-        timestamp: map_res!(take!(19), str::from_utf8) >>
+        timestamp: map_res!(take!(19), complete_byte_slice_to_str) >>
         tag!(":") >>
         digit >>
         tag!("][") >>
         digit >>
         take_until_and_consume!("Match State Changed from ") >>
-        from: map_res!(take_until_and_consume!(" to "), str::from_utf8) >>
-        to: map_res!(not_line_ending, str::from_utf8) >>
+        from: map_res!(take_until_and_consume!(" to "), complete_byte_slice_to_str) >>
+        to: map_res!(rest, complete_byte_slice_to_str) >>
 
-        (StateChange {
-            timestamp: timestamp,
-            from: from,
-            to: to,
+        (StateChange2 {
+            timestamp: timestamp.to_string(),
+            from: from.to_string(),
+            to: to.to_string(),
         })
 )));
 
@@ -65,7 +80,7 @@ fn test_parse_state_change() {
     {
         let data = "[2017.02.19-07.46.23:777][999]LogGameMode:Display: Match State Changed from EnteringMap to WaitingToStart";
 
-        let parsed = parse_state_change(data.as_bytes()).to_result().unwrap();
+        let parsed = parse_state_change(CompleteByteSlice(data.as_bytes())).map(nom_result).unwrap();
 
         assert_eq!(parsed.timestamp, "2017.02.19-07.46.23"); // TODO: could be better
         assert_eq!(parsed.from, "EnteringMap");
@@ -75,7 +90,7 @@ fn test_parse_state_change() {
     {
         let data = "[2017.02.16-16.32.34:961][  0]LogGameState: Match State Changed from EnteringMap to WaitingToStart";
 
-        let parsed = parse_state_change(data.as_bytes()).to_result().unwrap();
+        let parsed = parse_state_change(CompleteByteSlice(data.as_bytes())).map(nom_result).unwrap();
 
         assert_eq!(parsed.timestamp, "2017.02.16-16.32.34"); // TODO: could be better
         assert_eq!(parsed.from, "EnteringMap");
@@ -84,16 +99,16 @@ fn test_parse_state_change() {
 }
 
 #[derive(Debug, PartialEq)]
-pub struct Timestamp<'a> {
-    pub year: &'a str,
-    pub month: &'a str,
-    pub day: &'a str,
-    pub hour: &'a str,
-    pub minute: &'a str,
-    pub second: &'a str,
+pub struct Timestamp {
+    pub year: String,
+    pub month: String,
+    pub day: String,
+    pub hour: String,
+    pub minute: String,
+    pub second: String,
 }
 
-named!(pub parse_timestamp<&str, Timestamp>, ws!(do_parse!(
+named!(pub parse_timestamp<CompleteStr, Timestamp>, ws!(do_parse!(
         year: take!(4) >>
         tag!(".") >>
         month: take!(2) >>
@@ -107,12 +122,12 @@ named!(pub parse_timestamp<&str, Timestamp>, ws!(do_parse!(
         second: take!(2) >>
 
         (Timestamp {
-            year: year,
-            month: month,
-            day: day,
-            hour: hour,
-            minute: minute,
-            second: second,
+            year: year.to_string(),
+            month: month.to_string(),
+            day: day.to_string(),
+            hour: hour.to_string(),
+            minute: minute.to_string(),
+            second: second.to_string(),
         })
 )));
 
@@ -120,7 +135,7 @@ named!(pub parse_timestamp<&str, Timestamp>, ws!(do_parse!(
 fn test_parse_time() {
     let data = "2017.07.05-03.41.08";
 
-    let parsed = parse_timestamp(&data).to_result().unwrap();
+    let parsed = parse_timestamp(CompleteStr(&data)).map(nom_result).unwrap();
 
     assert_eq!(parsed.year, "2017");
     assert_eq!(parsed.month, "07");
@@ -131,18 +146,19 @@ fn test_parse_time() {
 }
 
 #[derive(Debug, PartialEq)]
-pub struct MapBroadcast<'a> {
-    pub map: &'a str,
-    pub broadcast: &'a str,
+pub struct MapBroadcast {
+    pub map: String,
+    pub broadcast: String,
 }
 
-named!(pub parse_map_broadcast<&str, MapBroadcast>, ws!(do_parse!(
+named!(pub parse_map_broadcast<CompleteStr, MapBroadcast>, ws!(do_parse!(
         map: take_until_and_consume!("=") >>
-        broadcast: not_line_ending >>
+        // broadcast: not_line_ending >>
+        broadcast: rest >>
 
         (MapBroadcast {
-            map: map,
-            broadcast: broadcast,
+            map: map.to_string(),
+            broadcast: broadcast.to_string(),
         })
 )));
 
@@ -151,7 +167,7 @@ fn test_parse_map_broadcast() {
     let data =
         "/Game/Maps/BASRAH_CITY/Albasrah_aas_v1.Albasrah_aas_v1=DO NOT RUSH ANY VILLAGE/REFINERY";
 
-    let parsed = parse_map_broadcast(&data).to_result().unwrap();
+    let parsed = parse_map_broadcast(CompleteStr(data)).map(nom_result).unwrap();
 
     assert_eq!(
         parsed.map,

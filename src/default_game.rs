@@ -3,6 +3,9 @@ use std::io::{BufRead, BufReader};
 
 use failure::{Error, ResultExt};
 
+use nom_result;
+use nom_err;
+
 pub fn load_default_game_ini() -> Result<Vec<MapShortLong>, Error> {
     let f = File::open("DefaultGame.ini").context("can't open DefaultGame.ini")?;
     let reader = BufReader::new(f);
@@ -13,7 +16,8 @@ pub fn load_default_game_ini() -> Result<Vec<MapShortLong>, Error> {
         let l = line.unwrap();
 
         if l.starts_with("+ValidMapsList=") {
-            let parsed = parse_map_line(&l).to_result().unwrap();
+            let parsed = parse_map_line(&l).map(nom_result)
+                .map_err(nom_err)?;
 
             if parsed.paths.len() == 1 {
                 list.push(MapShortLong {
@@ -53,7 +57,7 @@ named!(parse_map_line<&str, Map>, ws!(do_parse!(
 #[test]
 fn test() {
     let data = r#"+ValidMapsList=(ShortName="Logar", MapPaths=("/Game/Maps/Logar_Valley/LogarValley_AAS_v1", "/Game/Maps/Logar_Valley/Logar_Valley_2/LogarValley_AAS_INF_v1", "/Game/Maps/Logar_Valley/Logar_Valley_2_INS/LogarValley_INS_v1", "/Game/Maps/Logar_Valley/Logar_Valley_3_INS/LogarValley_INS_v1_Night", "/Game/Maps/Logar_Valley/Logar_Valley_PAAS/LogarValley_PAAS_v1"), LoadingScreenTexturePath="/Game/UI/Menu/LoadingScreen.LoadingScreen")"#;
-    let parsed = parse_map_line(&data).to_result().unwrap();
+    let parsed = parse_map_line(&data).map(nom_result).unwrap();
     assert_eq!(parsed.short_name, "Logar".to_string());
     assert_eq!(
         parsed.paths,
@@ -70,7 +74,7 @@ fn test() {
 #[test]
 fn test2() {
     let data = r#"+ValidMapsList=(ShortName="Fool's Road AAS v1", MapPaths=("/Game/Maps/Fools_Road/FoolsRoad_AAS_v1"), LoadingScreenTexturePath="/Game/UI/Menu/LoadingScreen.LoadingScreen")"#;
-    let parsed = parse_map_line(&data).to_result().unwrap();
+    let parsed = parse_map_line(&data).map(nom_result).unwrap();
     assert_eq!(parsed.short_name, "Fool's Road AAS v1");
     assert_eq!(parsed.paths, vec!["/Game/Maps/Fools_Road/FoolsRoad_AAS_v1"]);
 }

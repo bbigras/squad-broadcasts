@@ -29,6 +29,7 @@ use env_logger::Env;
 use failure::{err_msg, Error, ResultExt};
 use parsers::{parse_bringing_world, parse_state_change, parse_timestamp};
 use stream_line_reader::StreamReader;
+use nom::types::{CompleteByteSlice, CompleteStr};
 
 use std::fs::{metadata, File};
 use std::io::BufRead;
@@ -44,6 +45,17 @@ const LOG_FILE: &str = "Squad.log";
 pub mod built_info {
     // The file has been placed there by the build script.
     include!(concat!(env!("OUT_DIR"), "/built.rs"));
+}
+
+fn nom_result<R, T>((_, v): (R, T)) -> T {
+    v
+}
+
+fn nom_err<T>(e: nom::Err<T>) -> Error
+where
+    T: std::fmt::Debug,
+{
+    format_err!("nom error: {:?}", e)
 }
 
 #[derive(Clone, Debug, Deserialize, PartialEq)]
@@ -71,8 +83,8 @@ struct LogState {
 
 fn line_bringing_world(l: &[u8], is_preload: &bool, log_state: &mut LogState) -> Result<(), Error> {
     let r = parse_bringing_world(l)
-        .to_full_result()
-        .map_err(|e| format_err!("{:?}", e))
+        .map(nom_result)
+        .map_err(nom_err)
         .context("can't parse_bringing_world")?;
 
     if r.map != "/Game/Maps/TransitionMap.TransitionMap" {
@@ -92,13 +104,13 @@ fn line_map_change(
     log_state: &mut LogState,
     cfg: &Config,
 ) -> Result<(), Error> {
-    let r = parse_state_change(l)
-        .to_full_result()
-        .map_err(|e| format_err!("{:?}", e))
+    let r = parse_state_change(CompleteByteSlice(l))
+        .map(nom_result)
+        .map_err(nom_err)
         .context("can't parse_state_change")?;
-    let parsed = parse_timestamp(r.timestamp)
-        .to_full_result()
-        .map_err(|e| format_err!("{:?}", e))
+    let parsed = parse_timestamp(CompleteStr(&r.timestamp))
+        .map(nom_result)
+        .map_err(nom_err)
         .context("can't parse_timestamp")?;
 
     let datetime = Utc
