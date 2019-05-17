@@ -13,7 +13,7 @@ log = "0.4"
 nom = "4.1"
 rcon = { git = "https://github.com/bbigras/rs-rcon.git" }
 stream-line-reader = { git = "https://github.com/bbigras/stream-line-reader.git" }
-toml = "0.4"
+toml = "0.5"
 serde = "1.0"
 serde_derive = "1.0"
 
