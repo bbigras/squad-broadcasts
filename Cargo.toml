@@ -10,7 +10,7 @@ chrono = "0.4"
 env_logger = "0.6"
 failure = "0.1"
 log = "0.4"
-nom = "4.1"
+nom = "5.1"
 rcon = { git = "https://github.com/bbigras/rs-rcon.git" }
 stream-line-reader = { git = "https://github.com/bbigras/stream-line-reader.git" }
 toml = "0.4"
